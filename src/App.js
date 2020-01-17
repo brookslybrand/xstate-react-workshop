@@ -1,4 +1,6 @@
-import React, { useReducer } from "react";
+import React from "react";
+import { Machine } from "xstate";
+import { useMachine } from "@xstate/react";
 
 function Screen({ children, onSubmit = undefined }) {
   if (onSubmit) {
@@ -64,61 +66,58 @@ function ThanksScreen({ onClose }) {
   );
 }
 
-function feedbackReducer(state, event) {
-  switch (state) {
-    case "question":
-      switch (event.type) {
-        case "GOOD":
-          return "thanks";
-        case "BAD":
-          return "form";
-        case "CLOSE":
-          return "closed";
-        default:
-          return state;
+const feedbackMachine = Machine({
+  id: "feedbackMachine",
+  initial: "question",
+  on: {
+    CLOSE: "closed"
+  },
+  states: {
+    question: {
+      on: {
+        GOOD: "thanks",
+        BAD: "form",
+        CLOSE: "closed"
       }
-    case "form":
-      switch (event.type) {
-        case "SUBMIT":
-          return "thanks";
-        case "CLOSE":
-          return "closed";
-        default:
-          return state;
+    },
+    form: {
+      on: {
+        SUBMIT: "thanks",
+        CLOSE: "closed"
       }
-    case "thanks":
-      switch (event.type) {
-        case "CLOSE":
-          return "closed";
-        default:
-          return state;
+    },
+    thanks: {
+      on: {
+        CLOSE: "closed"
       }
-    default:
-      return state;
+    },
+    closed: {
+      type: "final"
+    }
   }
-}
+});
 
 export function Feedback() {
-  const [current, send] = useReducer(feedbackReducer, "question");
+  const [current, send] = useMachine(feedbackMachine);
 
   return (
     <>
-      {current === "question" ? (
+      {current.value === "question" ? (
         <QuestionScreen
           onClickGood={() => send({ type: "GOOD" })}
           onClickBad={() => send({ type: "BAD" })}
           onClose={() => send({ type: "CLOSE" })}
         />
-      ) : current === "form" ? (
+      ) : current.value === "form" ? (
         <FormScreen
           onSubmit={value => {
             send({ type: "SUBMIT" });
           }}
           onClose={() => send({ type: "CLOSE" })}
         />
-      ) : current === "thanks" ? (
+      ) : current.value === "thanks" ? (
         <ThanksScreen onClose={() => send({ type: "CLOSE" })} />
-      ) : current === "closed" ? null : null}
+      ) : current.value === "closed" ? null : null}
     </>
   );
 }
