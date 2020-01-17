@@ -14,9 +14,12 @@ function Screen({ children, onSubmit = undefined }) {
   return <section className="screen">{children}</section>;
 }
 
-function QuestionScreen({ onClickGood, onClickBad, onClose }) {
+function QuestionScreen({ currentState, onClickGood, onClickBad, onClose }) {
   return (
     <Screen>
+      {currentState.context.dog ? (
+        <img src={currentState.context.dog} height={200} alt="dog" />
+      ) : null}
       <header>How was your experience?</header>
       <button onClick={onClickGood} data-variant="good">
         Good
@@ -42,6 +45,9 @@ function FormScreen({ currentState, onSubmit, onClose }) {
       {currentState.matches({ form: "pending" }) ? (
         <>
           <header>Care to tell us why?</header>
+          {currentState.context.error ? (
+            <div style={{ color: "red" }}>{currentState.context.error}</div>
+          ) : null}
           <textarea
             name="response"
             placeholder="Complain here"
@@ -57,16 +63,19 @@ function FormScreen({ currentState, onSubmit, onClose }) {
           <button title="close" type="button" onClick={onClose} />
         </>
       ) : currentState.matches({ form: "loading" }) ? (
-        <div>Submitting...</div>
+        <div>
+          Submitting... <button title="close" type="button" onClick={onClose} />
+        </div>
       ) : null}
     </Screen>
   );
 }
 
-function ThanksScreen({ response = "", onClose }) {
+function ThanksScreen({ currentState, onClose }) {
+  const { message } = currentState.context.feedback;
   return (
     <Screen>
-      <header>Thanks for your feedback: {response}</header>
+      <header>Thanks for your feedback: {message}</header>
       <button title="close" onClick={onClose} />
     </Screen>
   );
@@ -78,19 +87,32 @@ const formConfig = {
     pending: {
       on: {
         SUBMIT: {
-          target: "loading", // add guard
+          target: "loading",
           actions: "updateResponse",
           cond: "formValid"
         }
       }
     },
     loading: {
+      invoke: {
+        id: "submitForm",
+        src: "feedbackService",
+        onDone: {
+          target: "submitted",
+          actions: assign({
+            feedback: (_, e) => e.data
+          })
+        },
+        onError: {
+          target: "pending",
+          actions: assign({
+            error: (_, event) => event.data.message
+          })
+        }
+      },
       on: {
         SUCCESS: "submitted",
         FAILURE: "error"
-      },
-      after: {
-        2000: "submitted"
       }
     }, // handle SUCCESS
     submitted: {
@@ -104,11 +126,20 @@ const feedbackMachine = Machine(
   {
     initial: "question",
     context: {
-      response: ""
+      response: "",
+      feedback: undefined,
+      dog: undefined
     },
     states: {
       question: {
-        activities: "pinging",
+        invoke: {
+          src: "dogFetcher",
+          onDone: {
+            actions: assign({
+              dog: (_, e) => e.data.message
+            })
+          }
+        },
         on: {
           GOOD: {
             target: "thanks",
@@ -121,6 +152,9 @@ const feedbackMachine = Machine(
       },
       form: {
         ...formConfig,
+        on: {
+          CLOSE: "closed"
+        },
         onDone: "thanks"
       },
       thanks: {
@@ -133,17 +167,6 @@ const feedbackMachine = Machine(
     }
   },
   {
-    activities: {
-      pinging: (ctx, e) => {
-        const i = setInterval(() => {
-          console.log("ping!" + Date.now());
-        }, 1000);
-
-        return () => {
-          clearInterval(i);
-        };
-      }
-    },
     actions: {
       logExit: (context, event) => {},
       alertInvalid: () => {
@@ -157,6 +180,28 @@ const feedbackMachine = Machine(
       formValid: (context, event) => {
         return event.value.length > 0;
       }
+    },
+    services: {
+      dogFetcher: () =>
+        fetch("https://dog.ceo/api/breeds/image/random").then(data =>
+          data.json()
+        ),
+      feedbackService: (context, event) =>
+        new Promise((resolve, reject) => {
+          setTimeout(() => {
+            const error = Math.random() < 0.5;
+            if (error) {
+              reject({
+                message: "Something went wrong"
+              });
+            } else {
+              resolve({
+                timestamp: Date.now(),
+                message: "Feedback: " + context.response
+              });
+            }
+          }, 1500);
+        })
     }
   }
 );
@@ -168,6 +213,7 @@ export function Feedback() {
     <>
       {current.matches("question") ? (
         <QuestionScreen
+          currentState={current}
           onClickGood={() => send("GOOD")}
           onClickBad={() => send("BAD")}
           onClose={() => send("CLOSE")}
@@ -179,10 +225,7 @@ export function Feedback() {
           onClose={() => send("CLOSE")}
         />
       ) : current.matches("thanks") ? (
-        <ThanksScreen
-          response={current.context.response}
-          onClose={() => send("CLOSE")}
-        />
+        <ThanksScreen currentState={current} onClose={() => send("CLOSE")} />
       ) : current.matches("closed") ? null : null}
     </>
   );
