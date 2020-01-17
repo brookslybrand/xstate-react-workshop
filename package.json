@@ -3,9 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "devDependencies": {
-    "@babel/core": "^7.4.3",
     "@storybook/react": "^5.0.10",
-    "babel-loader": "^8.0.5",
     "chai": "^4.2.0",
     "node-sass": "^4.11.0",
     "react-scripts": "3.0.0",

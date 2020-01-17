@@ -1,5 +1,7 @@
 # React Finland Statecharts Workshop
 
+This project was forked from [David's workshop repo](https://github.com/davidkpiano/xstate-react-workshop) in my attempt to practice developing UIs with statecharts. My approach is following the commits in the `answers` branch, trying to implement the features without straightup copying the code as I'm looking at it. We'll see how this goes!
+
 Statecharts are a powerful, well-established formalism that describe even the most complex application behavior and logic in a visual, hierarchical, and deterministic way. In this workshop you will learn about finite state machines and statecharts, and apply them to real-life React applications in ways that will increase productivity and eliminate entire classes of possible bugs from your code. You will also learn how to:
 
 - Refactor React applications of any size to use statecharts, piece by piece

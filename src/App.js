@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useReducer } from "react";
 
 function Screen({ children, onSubmit = undefined }) {
   if (onSubmit) {
@@ -44,7 +44,7 @@ function FormScreen({ onSubmit, onClose }) {
         name="response"
         placeholder="Complain here"
         onKeyDown={e => {
-          if (e.key === 'Escape') {
+          if (e.key === "Escape") {
             e.stopPropagation();
           }
         }}
@@ -66,30 +66,30 @@ function ThanksScreen({ onClose }) {
 
 function feedbackReducer(state, event) {
   switch (state) {
-    case 'question':
+    case "question":
       switch (event.type) {
-        case 'GOOD':
-          return 'thanks';
-        case 'BAD':
-          return 'form';
-        case 'CLOSE':
-          return 'closed';
+        case "GOOD":
+          return "thanks";
+        case "BAD":
+          return "form";
+        case "CLOSE":
+          return "closed";
         default:
           return state;
       }
-    case 'form':
+    case "form":
       switch (event.type) {
-        case 'SUBMIT':
-          return 'thanks';
-        case 'CLOSE':
-          return 'closed';
+        case "SUBMIT":
+          return "thanks";
+        case "CLOSE":
+          return "closed";
         default:
           return state;
       }
-    case 'thanks':
+    case "thanks":
       switch (event.type) {
-        case 'CLOSE':
-          return 'closed';
+        case "CLOSE":
+          return "closed";
         default:
           return state;
       }
@@ -99,15 +99,29 @@ function feedbackReducer(state, event) {
 }
 
 export function Feedback() {
+  const [current, send] = useReducer(feedbackReducer, "question");
+
+  console.log(current);
+
   return (
     <>
-      <QuestionScreen
-        onClickGood={() => {}}
-        onClickBad={() => {}}
-        onClose={() => {}}
-      />
-      <FormScreen onSubmit={value => {}} onClose={() => {}} />
-      <ThanksScreen onClose={() => {}} />
+      {current === "question" ? (
+        <QuestionScreen
+          onClickGood={() => {
+            send({ type: "GOOD" });
+          }}
+          onClickBad={() => {
+            send({ type: "BAD" });
+          }}
+          onClose={() => {
+            send({ type: "CLOSE" });
+          }}
+        />
+      ) : current === "form" ? (
+        <FormScreen onSubmit={value => {}} onClose={() => {}} />
+      ) : current === "thanks" ? (
+        <ThanksScreen onClose={() => {}} />
+      ) : current === "closed" ? null : null}
     </>
   );
 }
