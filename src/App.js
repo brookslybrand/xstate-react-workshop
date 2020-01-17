@@ -57,10 +57,10 @@ function FormScreen({ onSubmit, onClose }) {
   );
 }
 
-function ThanksScreen({ onClose }) {
+function ThanksScreen({ response = "", onClose }) {
   return (
     <Screen>
-      <header>Thanks for your feedback.</header>
+      <header>Thanks for your feedback: {response}</header>
       <button title="close" onClick={onClose} />
     </Screen>
   );
@@ -84,12 +84,19 @@ const feedbackMachine = Machine(
       },
       form: {
         on: {
-          SUBMIT: {
-            target: "thanks",
-            actions: assign({
-              response: (context, event) => event.value
-            })
-          },
+          SUBMIT: [
+            {
+              target: "thanks",
+              actions: assign({
+                response: (context, event) => event.value
+              }),
+              cond: "formValid"
+            },
+            {
+              target: "form",
+              actions: "alertInvalid"
+            }
+          ],
           CLOSE: "closed"
         }
       },
@@ -107,15 +114,19 @@ const feedbackMachine = Machine(
     actions: {
       logExit: (context, event) => {
         console.log("exited", event);
+      },
+      alertInvalid: () => {
+        alert("You did not fill out the form!!");
       }
+    },
+    guards: {
+      formValid: (context, event) => event.value.length > 0
     }
   }
 );
 
 export function Feedback() {
   const [current, send] = useMachine(feedbackMachine);
-
-  console.log(current.context);
 
   return (
     <>
@@ -131,7 +142,10 @@ export function Feedback() {
           onClose={() => send("CLOSE")}
         />
       ) : current.matches("thanks") ? (
-        <ThanksScreen onClose={() => send("CLOSE")} />
+        <ThanksScreen
+          response={current.context.response}
+          onClose={() => send("CLOSE")}
+        />
       ) : current.matches("closed") ? null : null}
     </>
   );
