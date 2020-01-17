@@ -101,26 +101,23 @@ function feedbackReducer(state, event) {
 export function Feedback() {
   const [current, send] = useReducer(feedbackReducer, "question");
 
-  console.log(current);
-
   return (
     <>
       {current === "question" ? (
         <QuestionScreen
-          onClickGood={() => {
-            send({ type: "GOOD" });
-          }}
-          onClickBad={() => {
-            send({ type: "BAD" });
-          }}
-          onClose={() => {
-            send({ type: "CLOSE" });
-          }}
+          onClickGood={() => send({ type: "GOOD" })}
+          onClickBad={() => send({ type: "BAD" })}
+          onClose={() => send({ type: "CLOSE" })}
         />
       ) : current === "form" ? (
-        <FormScreen onSubmit={value => {}} onClose={() => {}} />
+        <FormScreen
+          onSubmit={value => {
+            send({ type: "SUBMIT" });
+          }}
+          onClose={() => send({ type: "CLOSE" })}
+        />
       ) : current === "thanks" ? (
-        <ThanksScreen onClose={() => {}} />
+        <ThanksScreen onClose={() => send({ type: "CLOSE" })} />
       ) : current === "closed" ? null : null}
     </>
   );
