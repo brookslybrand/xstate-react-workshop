@@ -29,7 +29,7 @@ function QuestionScreen({ onClickGood, onClickBad, onClose }) {
   );
 }
 
-function FormScreen({ onSubmit, onClose }) {
+function FormScreen({ currentState, onSubmit, onClose }) {
   const [response, setResponse] = useState("");
 
   return (
@@ -39,20 +39,26 @@ function FormScreen({ onSubmit, onClose }) {
         onSubmit(response);
       }}
     >
-      <header>Care to tell us why?</header>
-      <textarea
-        name="response"
-        placeholder="Complain here"
-        onKeyDown={e => {
-          if (e.key === "Escape") {
-            e.stopPropagation();
-          }
-        }}
-        value={response}
-        onChange={e => setResponse(e.target.value)}
-      />
-      <button>Submit</button>
-      <button title="close" type="button" onClick={onClose} />
+      {currentState.matches({ form: "pending" }) ? (
+        <>
+          <header>Care to tell us why?</header>
+          <textarea
+            name="response"
+            placeholder="Complain here"
+            onKeyDown={e => {
+              if (e.key === "Escape") {
+                e.stopPropagation();
+              }
+            }}
+            value={response}
+            onChange={e => setResponse(e.target.value)}
+          />
+          <button>Submit</button>
+          <button title="close" type="button" onClick={onClose} />
+        </>
+      ) : currentState.matches({ form: "loading" }) ? (
+        <div>Submitting...</div>
+      ) : null}
     </Screen>
   );
 }
@@ -66,61 +72,91 @@ function ThanksScreen({ response = "", onClose }) {
   );
 }
 
+const formConfig = {
+  initial: "pending",
+  states: {
+    pending: {
+      on: {
+        SUBMIT: {
+          target: "loading", // add guard
+          actions: "updateResponse",
+          cond: "formValid"
+        }
+      }
+    },
+    loading: {
+      on: {
+        SUCCESS: "submitted",
+        FAILURE: "error"
+      },
+      after: {
+        2000: "submitted"
+      }
+    }, // handle SUCCESS
+    submitted: {
+      type: "final"
+    },
+    error: {}
+  }
+};
+
 const feedbackMachine = Machine(
   {
-    id: "feedbackMachine",
     initial: "question",
     context: {
       response: ""
     },
     states: {
       question: {
+        activities: "pinging",
         on: {
-          GOOD: "thanks",
+          GOOD: {
+            target: "thanks",
+            actions: "logGood"
+          },
           BAD: "form",
           CLOSE: "closed"
         },
         onExit: ["logExit"]
       },
       form: {
-        on: {
-          SUBMIT: [
-            {
-              target: "thanks",
-              actions: assign({
-                response: (context, event) => event.value
-              }),
-              cond: "formValid"
-            },
-            {
-              target: "form",
-              actions: "alertInvalid"
-            }
-          ],
-          CLOSE: "closed"
-        }
+        ...formConfig,
+        onDone: "thanks"
       },
       thanks: {
+        onEntry: "logEntered",
         on: {
           CLOSE: "closed"
         }
       },
-      closed: {
-        type: "final"
-      }
+      closed: {}
     }
   },
   {
-    actions: {
-      logExit: (context, event) => {
-        console.log("exited", event);
-      },
-      alertInvalid: () => {
-        alert("You did not fill out the form!!");
+    activities: {
+      pinging: (ctx, e) => {
+        const i = setInterval(() => {
+          console.log("ping!" + Date.now());
+        }, 1000);
+
+        return () => {
+          clearInterval(i);
+        };
       }
     },
+    actions: {
+      logExit: (context, event) => {},
+      alertInvalid: () => {
+        alert("You did not fill out the form!!");
+      },
+      updateResponse: assign({
+        response: (ctx, e) => e.value
+      })
+    },
     guards: {
-      formValid: (context, event) => event.value.length > 0
+      formValid: (context, event) => {
+        return event.value.length > 0;
+      }
     }
   }
 );
@@ -138,6 +174,7 @@ export function Feedback() {
         />
       ) : current.matches("form") ? (
         <FormScreen
+          currentState={current}
           onSubmit={value => send({ type: "SUBMIT", value })}
           onClose={() => send("CLOSE")}
         />
