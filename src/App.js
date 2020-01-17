@@ -1,5 +1,5 @@
-import React from "react";
-import { Machine } from "xstate";
+import React, { useState } from "react";
+import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
 
 function Screen({ children, onSubmit = undefined }) {
@@ -30,15 +30,13 @@ function QuestionScreen({ onClickGood, onClickBad, onClose }) {
 }
 
 function FormScreen({ onSubmit, onClose }) {
+  const [response, setResponse] = useState("");
+
   return (
     <Screen
       onSubmit={e => {
         e.preventDefault();
-        const { response } = e.target.elements;
-
-        onSubmit({
-          value: response
-        });
+        onSubmit(response);
       }}
     >
       <header>Care to tell us why?</header>
@@ -50,6 +48,8 @@ function FormScreen({ onSubmit, onClose }) {
             e.stopPropagation();
           }
         }}
+        value={response}
+        onChange={e => setResponse(e.target.value)}
       />
       <button>Submit</button>
       <button title="close" type="button" onClick={onClose} />
@@ -66,58 +66,73 @@ function ThanksScreen({ onClose }) {
   );
 }
 
-const feedbackMachine = Machine({
-  id: "feedbackMachine",
-  initial: "question",
-  on: {
-    CLOSE: "closed"
+const feedbackMachine = Machine(
+  {
+    id: "feedbackMachine",
+    initial: "question",
+    context: {
+      response: ""
+    },
+    states: {
+      question: {
+        on: {
+          GOOD: "thanks",
+          BAD: "form",
+          CLOSE: "closed"
+        },
+        onExit: ["logExit"]
+      },
+      form: {
+        on: {
+          SUBMIT: {
+            target: "thanks",
+            actions: assign({
+              response: (context, event) => event.value
+            })
+          },
+          CLOSE: "closed"
+        }
+      },
+      thanks: {
+        on: {
+          CLOSE: "closed"
+        }
+      },
+      closed: {
+        type: "final"
+      }
+    }
   },
-  states: {
-    question: {
-      on: {
-        GOOD: "thanks",
-        BAD: "form",
-        CLOSE: "closed"
+  {
+    actions: {
+      logExit: (context, event) => {
+        console.log("exited", event);
       }
-    },
-    form: {
-      on: {
-        SUBMIT: "thanks",
-        CLOSE: "closed"
-      }
-    },
-    thanks: {
-      on: {
-        CLOSE: "closed"
-      }
-    },
-    closed: {
-      type: "final"
     }
   }
-});
+);
 
 export function Feedback() {
   const [current, send] = useMachine(feedbackMachine);
 
+  console.log(current.context);
+
   return (
     <>
-      {current.value === "question" ? (
+      {current.matches("question") ? (
         <QuestionScreen
-          onClickGood={() => send({ type: "GOOD" })}
-          onClickBad={() => send({ type: "BAD" })}
-          onClose={() => send({ type: "CLOSE" })}
+          onClickGood={() => send("GOOD")}
+          onClickBad={() => send("BAD")}
+          onClose={() => send("CLOSE")}
         />
-      ) : current.value === "form" ? (
+      ) : current.matches("form") ? (
         <FormScreen
-          onSubmit={value => {
-            send({ type: "SUBMIT" });
-          }}
-          onClose={() => send({ type: "CLOSE" })}
+          onSubmit={value => send({ type: "SUBMIT", value })}
+          onClose={() => send("CLOSE")}
         />
-      ) : current.value === "thanks" ? (
-        <ThanksScreen onClose={() => send({ type: "CLOSE" })} />
-      ) : current.value === "closed" ? null : null}
+      ) : current.matches("thanks") ? (
+        <ThanksScreen onClose={() => send("CLOSE")} />
+      ) : current.matches("closed") ? null : null}
     </>
   );
 }
