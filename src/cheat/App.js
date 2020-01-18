@@ -1,4 +1,6 @@
-import React, { useReducer, useEffect } from 'react';
+import React, { useReducer, useEffect } from "react";
+import { getSimplePaths } from "@xstate/graph";
+import { Machine } from "xstate";
 
 function useKeyDown(key, onKeyDown) {
   useEffect(() => {
@@ -8,9 +10,9 @@ function useKeyDown(key, onKeyDown) {
       }
     };
 
-    window.addEventListener('keydown', handler);
+    window.addEventListener("keydown", handler);
 
-    return () => window.removeEventListener('keydown', handler);
+    return () => window.removeEventListener("keydown", handler);
   }, [onKeyDown, key]);
 }
 
@@ -27,7 +29,7 @@ function Screen({ children, onSubmit = undefined }) {
 }
 
 function QuestionScreen({ onClickGood, onClickBad, onClose }) {
-  useKeyDown('Escape', onClose);
+  useKeyDown("Escape", onClose);
 
   return (
     <Screen>
@@ -44,7 +46,7 @@ function QuestionScreen({ onClickGood, onClickBad, onClose }) {
 }
 
 function FormScreen({ onSubmit, onClose }) {
-  useKeyDown('Escape', onClose);
+  useKeyDown("Escape", onClose);
 
   return (
     <Screen
@@ -62,7 +64,7 @@ function FormScreen({ onSubmit, onClose }) {
         name="response"
         placeholder="Complain here"
         onKeyDown={e => {
-          if (e.key === 'Escape') {
+          if (e.key === "Escape") {
             e.stopPropagation();
           }
         }}
@@ -74,7 +76,7 @@ function FormScreen({ onSubmit, onClose }) {
 }
 
 function ThanksScreen({ onClose }) {
-  useKeyDown('Escape', onClose);
+  useKeyDown("Escape", onClose);
 
   return (
     <Screen>
@@ -86,30 +88,30 @@ function ThanksScreen({ onClose }) {
 
 function feedbackReducer(state, event) {
   switch (state) {
-    case 'question':
+    case "question":
       switch (event.type) {
-        case 'GOOD':
-          return 'thanks';
-        case 'BAD':
-          return 'form';
-        case 'CLOSE':
-          return 'closed';
+        case "GOOD":
+          return "thanks";
+        case "BAD":
+          return "form";
+        case "CLOSE":
+          return "closed";
         default:
           return state;
       }
-    case 'form':
+    case "form":
       switch (event.type) {
-        case 'SUBMIT':
-          return 'thanks';
-        case 'CLOSE':
-          return 'closed';
+        case "SUBMIT":
+          return "thanks";
+        case "CLOSE":
+          return "closed";
         default:
           return state;
       }
-    case 'thanks':
+    case "thanks":
       switch (event.type) {
-        case 'CLOSE':
-          return 'closed';
+        case "CLOSE":
+          return "closed";
         default:
           return state;
       }
@@ -119,27 +121,27 @@ function feedbackReducer(state, event) {
 }
 
 export function Feedback() {
-  const [state, send] = useReducer(feedbackReducer, 'question');
+  const [state, send] = useReducer(feedbackReducer, "question");
 
   switch (state) {
-    case 'question':
+    case "question":
       return (
         <QuestionScreen
-          onClickGood={() => send({ type: 'GOOD' })}
-          onClickBad={() => send({ type: 'BAD' })}
-          onClose={() => send({ type: 'CLOSE' })}
+          onClickGood={() => send({ type: "GOOD" })}
+          onClickBad={() => send({ type: "BAD" })}
+          onClose={() => send({ type: "CLOSE" })}
         />
       );
-    case 'form':
+    case "form":
       return (
         <FormScreen
-          onSubmit={value => send({ type: 'SUBMIT', value })}
-          onClose={() => send({ type: 'CLOSE' })}
+          onSubmit={value => send({ type: "SUBMIT", value })}
+          onClose={() => send({ type: "CLOSE" })}
         />
       );
-    case 'thanks':
-      return <ThanksScreen onClose={() => send({ type: 'CLOSE' })} />;
-    case 'closed':
+    case "thanks":
+      return <ThanksScreen onClose={() => send({ type: "CLOSE" })} />;
+    case "closed":
     default:
       return null;
   }
