@@ -2,10 +2,11 @@ import React from "react";
 import { Feedback } from "./cheat/App";
 import { Machine } from "xstate";
 import { getSimplePaths } from "@xstate/graph";
-import { render, fireEvent, cleanup } from "react-testing-library";
+import { render, fireEvent } from "@testing-library/react";
 import { assert } from "chai";
 
-afterEach(cleanup);
+// testing-library automatically cleans up afterEach: https://testing-library.com/docs/react-testing-library/setup#cleanup
+// afterEach(cleanup);
 
 const feedbackMachine = Machine({
   id: "feedback",
@@ -75,18 +76,20 @@ describe("feedback app", () => {
     const { paths, state: targetState } = simplePaths[key];
 
     describe(`state: ${key}`, () => {
-      afterEach(cleanup);
-
-      console.log(key);
-
-      paths.forEach(path => {
-        const eventString = path.length
-          ? "via " + path.map(step => step.event.type).join(", ")
+      paths.forEach(({ segments }) => {
+        const eventString = segments.length
+          ? "via " + segments.map(step => step.event.type).join(", ")
           : "";
 
         it(`reaches ${key} ${eventString}`, async () => {
           // Render the feedback app
-          const { getByText, queryByText } = render(<Feedback />);
+          const {
+            getByText,
+            queryByText,
+            getByTitle,
+            getByPlaceholderText,
+            baseElement
+          } = render(<Feedback />);
 
           // Add heuristics for asserting that the state is correct
           async function assertState(state) {
@@ -111,6 +114,28 @@ describe("feedback app", () => {
               CLICK_GOOD: () => {
                 const goodButton = getByText("Good");
                 fireEvent.click(goodButton);
+              },
+              CLICK_BAD: () => {
+                const badButton = getByText("Bad");
+                fireEvent.click(badButton);
+              },
+              CLOSE: () => {
+                const closeButton = getByTitle("close");
+                fireEvent.click(closeButton);
+              },
+              ESC: () => {
+                fireEvent.keyDown(baseElement, {
+                  key: "Escape"
+                });
+              },
+              SUBMIT: () => {
+                const textarea = getByPlaceholderText("Complain here");
+                fireEvent.change(textarea, {
+                  target: { value: event.value }
+                });
+
+                const submitButton = getByText("Submit");
+                fireEvent.click(submitButton);
               }
             };
 
@@ -125,7 +150,7 @@ describe("feedback app", () => {
           }
 
           // Loop through each of the steps, assert the state, execute the action
-          for (let step of path) {
+          for (let step of segments) {
             await assertState(step.state);
             await executeAction(step.event);
           }

@@ -6,10 +6,10 @@
     "@storybook/react": "^5.0.10",
     "chai": "^4.2.0",
     "node-sass": "^4.11.0",
-    "react-scripts": "^3.3.0",
-    "react-testing-library": "^6.1.2"
+    "react-scripts": "^3.3.0"
   },
   "dependencies": {
+    "@testing-library/react": "^9.4.0",
     "@xstate/graph": "^1.0.0",
     "@xstate/react": "^0.8.1",
     "react": "^16.12.0",

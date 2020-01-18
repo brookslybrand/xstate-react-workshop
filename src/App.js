@@ -19,7 +19,7 @@ function QuestionScreen({ onClickGood, onClickBad, onClose, currentState }) {
   return (
     <Screen>
       {currentState.context.dog ? (
-        <img src={currentState.context.dog} height={200} />
+        <img src={currentState.context.dog} height={200} alt="dog" />
       ) : null}
       <header>How was your experience with this dog?</header>
       <button onClick={onClickGood} data-variant="good">
