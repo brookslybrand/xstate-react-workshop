@@ -1,6 +1,5 @@
 import React from "react";
-import { Feedback } from "./cheat/App";
-import { Machine } from "xstate";
+import { Feedback, feedbackMachine } from "./cheat/App";
 import { getSimplePaths } from "@xstate/graph";
 import { render, fireEvent } from "@testing-library/react";
 import { assert } from "chai";
@@ -8,68 +7,42 @@ import { assert } from "chai";
 // testing-library automatically cleans up afterEach: https://testing-library.com/docs/react-testing-library/setup#cleanup
 // afterEach(cleanup);
 
-const feedbackMachine = Machine({
-  id: "feedback",
-  initial: "question",
-  states: {
-    question: {
-      on: {
-        CLICK_GOOD: "thanks",
-        CLICK_BAD: "form",
-        CLOSE: "closed",
-        ESC: "closed"
-      }
-    },
-    form: {
-      on: {
-        SUBMIT: "thanks",
-        CLOSE: "closed",
-        ESC: "closed"
-      }
-    },
-    thanks: {
-      on: {
-        CLOSE: "closed",
-        ESC: "closed"
-      }
-    },
-    closed: {
-      type: "final"
-    }
-  }
-});
+// Pick up where you left off:
+// https://github.com/davidkpiano/xstate-react-workshop/commits/answers
+// https://github.com/davidkpiano/xstate-react-workshop/commit/73ff454dd89458a64103928e03aac39d8777445f
 
+const events = feedbackMachine.events;
 const simplePaths = getSimplePaths(feedbackMachine);
 
-describe("feedback app (manual tests)", () => {
-  it('should show the thanks screen when "Good" is clicked', () => {
-    const { getByText } = render(<Feedback />);
+// describe("feedback app (manual tests)", () => {
+//   it('should show the thanks screen when "Good" is clicked', () => {
+//     const { getByText } = render(<Feedback />);
 
-    // The question screen should be visible at first
-    assert.ok(getByText("How was your experience?"));
+//     // The question screen should be visible at first
+//     assert.ok(getByText("How was your experience?"));
 
-    // Click the "Good" button
-    const goodButton = getByText("Good");
-    fireEvent.click(goodButton);
+//     // Click the "Good" button
+//     const goodButton = getByText("Good");
+//     fireEvent.click(goodButton);
 
-    // Now the thanks screen should be visible
-    assert.ok(getByText("Thanks for your feedback."));
-  });
+//     // Now the thanks screen should be visible
+//     assert.ok(getByText("Thanks for your feedback."));
+//   });
 
-  it('should show the form screen when "Bad" is clicked', () => {
-    const { getByText } = render(<Feedback />);
+//   it('should show the form screen when "Bad" is clicked', () => {
+//     const { getByText } = render(<Feedback />);
 
-    // The question screen should be visible at first
-    assert.ok(getByText("How was your experience?"));
+//     // The question screen should be visible at first
+//     assert.ok(getByText("How was your experience?"));
 
-    // Click the "Bad" button
-    const badButton = getByText("Bad");
-    fireEvent.click(badButton);
+//     // Click the "Bad" button
+//     const badButton = getByText("Bad");
+//     fireEvent.click(badButton);
 
-    // Now the form screen should be visible
-    assert.ok(getByText("Care to tell us why?"));
-  });
-});
+//     // Now the form screen should be visible
+//     assert.ok(getByText("Care to tell us why?"));
+//   });
+// });
 
 describe("feedback app", () => {
   Object.keys(simplePaths).forEach(key => {
@@ -111,11 +84,11 @@ describe("feedback app", () => {
           // Add actions that will be executed (and asserted) to produce the events
           async function executeAction(event) {
             const actions = {
-              CLICK_GOOD: () => {
+              GOOD: () => {
                 const goodButton = getByText("Good");
                 fireEvent.click(goodButton);
               },
-              CLICK_BAD: () => {
+              BAD: () => {
                 const badButton = getByText("Bad");
                 fireEvent.click(badButton);
               },
@@ -151,7 +124,22 @@ describe("feedback app", () => {
 
           // Loop through each of the steps, assert the state, execute the action
           for (let step of segments) {
+            // make sure that we're in the expected state
             await assertState(step.state);
+
+            const invalidEvents = events.filter(event => {
+              return !step.state.nextEvents.includes(event);
+            });
+
+            // make sure that an invalid event does not change the state
+            for (const invalidEvent of invalidEvents) {
+              try {
+                await executeAction({ type: invalidEvent });
+              } catch (e) {}
+              await assertState(step.state);
+            }
+
+            // executre the action
             await executeAction(step.event);
           }
 

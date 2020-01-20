@@ -2,6 +2,37 @@ import React, { useReducer, useEffect } from "react";
 import { getSimplePaths } from "@xstate/graph";
 import { Machine } from "xstate";
 
+export const feedbackMachine = Machine({
+  id: "feedback",
+  initial: "question",
+  states: {
+    question: {
+      on: {
+        GOOD: "form",
+        BAD: "form",
+        CLOSE: "closed",
+        ESC: "closed"
+      }
+    },
+    form: {
+      on: {
+        SUBMIT: "thanks",
+        CLOSE: "closed",
+        ESC: "closed"
+      }
+    },
+    thanks: {
+      on: {
+        CLOSE: "closed",
+        ESC: "closed"
+      }
+    },
+    closed: {
+      type: "final"
+    }
+  }
+});
+
 function useKeyDown(key, onKeyDown) {
   useEffect(() => {
     const handler = e => {
@@ -29,8 +60,6 @@ function Screen({ children, onSubmit = undefined }) {
 }
 
 function QuestionScreen({ onClickGood, onClickBad, onClose }) {
-  useKeyDown("Escape", onClose);
-
   return (
     <Screen>
       <header>How was your experience?</header>
@@ -46,8 +75,6 @@ function QuestionScreen({ onClickGood, onClickBad, onClose }) {
 }
 
 function FormScreen({ onSubmit, onClose }) {
-  useKeyDown("Escape", onClose);
-
   return (
     <Screen
       onSubmit={e => {
@@ -69,6 +96,9 @@ function FormScreen({ onSubmit, onClose }) {
           }
         }}
       />
+      <button data-variant="good" type="button">
+        Good
+      </button>
       <button>Submit</button>
       <button title="close" type="button" onClick={onClose} />
     </Screen>
@@ -76,8 +106,6 @@ function FormScreen({ onSubmit, onClose }) {
 }
 
 function ThanksScreen({ onClose }) {
-  useKeyDown("Escape", onClose);
-
   return (
     <Screen>
       <header>Thanks for your feedback.</header>
@@ -87,41 +115,14 @@ function ThanksScreen({ onClose }) {
 }
 
 function feedbackReducer(state, event) {
-  switch (state) {
-    case "question":
-      switch (event.type) {
-        case "GOOD":
-          return "thanks";
-        case "BAD":
-          return "form";
-        case "CLOSE":
-          return "closed";
-        default:
-          return state;
-      }
-    case "form":
-      switch (event.type) {
-        case "SUBMIT":
-          return "thanks";
-        case "CLOSE":
-          return "closed";
-        default:
-          return state;
-      }
-    case "thanks":
-      switch (event.type) {
-        case "CLOSE":
-          return "closed";
-        default:
-          return state;
-      }
-    default:
-      return state;
-  }
+  const nextState = feedbackMachine.transition(state, event);
+
+  return nextState.value;
 }
 
 export function Feedback() {
   const [state, send] = useReducer(feedbackReducer, "question");
+  useKeyDown("Escape", () => send({ type: "CLOSE" }));
 
   switch (state) {
     case "question":
