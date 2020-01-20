@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "devDependencies": {
+    "@storybook/preset-create-react-app": "^1.5.2",
     "@storybook/react": "^5.0.10",
     "chai": "^4.2.0",
     "node-sass": "^4.11.0",

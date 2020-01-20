@@ -1,37 +1,64 @@
 import React, { useReducer, useEffect } from "react";
-import { getSimplePaths } from "@xstate/graph";
+import { getShortestPaths } from "@xstate/graph";
 import { Machine } from "xstate";
+import { useMachine } from "@xstate/react";
 
-export const feedbackMachine = Machine({
-  id: "feedback",
-  initial: "question",
-  states: {
-    question: {
-      on: {
-        GOOD: "form",
-        BAD: "form",
-        CLOSE: "closed",
-        ESC: "closed"
+export const feedbackMachine = Machine(
+  {
+    id: "feedback",
+    initial: "question",
+    states: {
+      question: {
+        invoke: {
+          src: "someService"
+        },
+        on: {
+          GOOD: "form",
+          BAD: "form",
+          CLOSE: "closed",
+          ESC: "closed"
+        },
+        meta: {
+          message: "Tell us if you had a good or bad experience."
+        }
+      },
+      form: {
+        on: {
+          SUBMIT: "thanks",
+          CLOSE: "closed",
+          ESC: "closed"
+        },
+        meta: {
+          message: "Provide feedback and tell us your concerns."
+        }
+      },
+      thanks: {
+        on: {
+          CLOSE: "closed",
+          ESC: "closed"
+        },
+        meta: {
+          message: "We will then read your feedback."
+        }
+      },
+      closed: {
+        type: "final",
+        meta: {
+          message: "Okay bye"
+        }
       }
-    },
-    form: {
-      on: {
-        SUBMIT: "thanks",
-        CLOSE: "closed",
-        ESC: "closed"
-      }
-    },
-    thanks: {
-      on: {
-        CLOSE: "closed",
-        ESC: "closed"
-      }
-    },
-    closed: {
-      type: "final"
+    }
+  },
+  {
+    services: {
+      someService: () =>
+        new Promise(res => {
+          console.log("this is the specified service");
+          res("hello");
+        })
     }
   }
-});
+);
 
 function useKeyDown(key, onKeyDown) {
   useEffect(() => {
@@ -96,9 +123,6 @@ function FormScreen({ onSubmit, onClose }) {
           }
         }}
       />
-      <button data-variant="good" type="button">
-        Good
-      </button>
       <button>Submit</button>
       <button title="close" type="button" onClick={onClose} />
     </Screen>
@@ -114,15 +138,8 @@ function ThanksScreen({ onClose }) {
   );
 }
 
-function feedbackReducer(state, event) {
-  const nextState = feedbackMachine.transition(state, event);
-
-  return nextState.value;
-}
-
-export function Feedback() {
-  const [state, send] = useReducer(feedbackReducer, "question");
-  useKeyDown("Escape", () => send({ type: "CLOSE" }));
+export function FeedbackScreen({ currentState, send }) {
+  const state = currentState.value;
 
   switch (state) {
     case "question":
@@ -147,6 +164,16 @@ export function Feedback() {
       return null;
   }
 }
+
+export function Feedback({ initialState = "question" }) {
+  const [current, send] = useMachine(Feedback.machine);
+
+  useKeyDown("Escape", () => send({ type: "CLOSE" }));
+
+  return <FeedbackScreen currentState={current} send={send} />;
+}
+
+Feedback.machine = feedbackMachine;
 
 export function App() {
   return (
